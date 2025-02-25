@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRAVUL Screener</title>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        input {
+            padding: 10px;
+            width: 100%;
+            max-width: 300px;
+            background: #333;
+            color: #fff;
+            border: none;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #444;
+            text-align: left;
+        }
+        th {
+            background: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background: #333;
+        }
+        tr:hover {
+            background: #444;
+        }
+        @media (max-width: 600px) {
+            th, td {
+                padding: 8px;
+                font-size: 14px;
+            }
+        }
+        .spread-table {
+            margin-top: 40px;
+        }
+        .spread-table th {
+            background: #FF5722;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>KRAVUL Price Screener</h1>
+        <input type="text" id="symbol" placeholder="Введите тикер">
+        <button onclick="loadData()">Показать</button>
+
+        <!-- Таблица с ценами -->
+        <table id="prices">
+            <thead>
+                <tr>
+                    <th>Биржа</th>
+                    <th>Цена (USDT)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Строки будут добавлены динамически -->
+            </tbody>
+        </table>
+
+        <!-- Таблица с самым большим спредом -->
+        <table id="spread" class="spread-table">
+            <thead>
+                <tr>
+                    <th>Максимальная цена</th>
+                    <th>Биржа</th>
+                    <th>Минимальная цена</th>
+                    <th>Биржа</th>
+                    <th>Спред</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Строки будут добавлены динамически -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Список всех бирж
+        const exchanges = [
+            "Binance", "Coinbase", "Kraken", "Bybit",
+            "MEXC", "Gate.io",
+            "OKX", "KuCoin",
+        ];
+
+        // Функция для загрузки данных
+        async function loadData() {
+            const symbol = document.getElementById('symbol').value.toUpperCase();
+            if (!symbol) {
+                alert("Введите тикер (например, BTC)");
+                return;
+            }
+
+            try {
+                console.log("Запрос данных для:", symbol);  // Логирование
+                const response = await fetch(`http://localhost:5000/prices/${symbol}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("Ответ сервера:", data);  // Логирование
+
+                const tbody = document.querySelector('#prices tbody');
+                tbody.innerHTML = '';  // Очищаем таблицу
+
+                // Отображаем все биржи
+              exchanges.forEach(exchange => {
+                    const price = data.prices[exchange] || "N/A";
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${exchange}</td>
+                            <td>${price !== "N/A" ? price.toFixed(2) : price}</td>
+                        </tr>
+                    `;
+                });
+
+                // Вычисляем спред
+                const validPrices = Object.entries(data.prices).filter(([_, price]) => price !== "N/A");
+                if (validPrices.length > 0) {
+                    // Находим максимальную и минимальную цену
+                    const maxEntry = validPrices.reduce((a, b) => a[1] > b[1] ? a : b);
+                    const minEntry = validPrices.reduce((a, b) => a[1] < b[1] ? a : b);
+
+                    const maxPrice = maxEntry[1];
+                    const minPrice = minEntry[1];
+                    const spread = maxPrice - minPrice;
+
+                    // Отображаем спред
+                    const spreadTbody = document.querySelector('#spread tbody');
+                    spreadTbody.innerHTML = `
+                        <tr>
+                            <td>${maxPrice.toFixed(2)}</td>
+                            <td>${maxEntry[0]}</td>
+                            <td>${minPrice.toFixed(2)}</td>
+                            <td>${minEntry[0]}</td>
+                            <td>${spread.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }
+
+            } catch (error) {
+                console.error('Fetch error:', error);
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        // Автообновление каждые 5 секунд
+        function startAutoRefresh() {
+            setInterval(loadData, 5000);
+        }
+
+        // Запуск автообновления при загрузке страницы
+        window.onload = function() {
+            loadData();  // Первый запрос
+            startAutoRefresh();  // Автообновление
+        };
+    </script>
+</body>
+</html>
