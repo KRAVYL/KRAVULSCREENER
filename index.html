@@ -120,7 +120,7 @@
 
             try {
                 console.log("Запрос данных для:", symbol);  // Логирование
-                const response = await fetch(`http://localhost:5000/prices/${symbol}`);
+                const response = await fetch(`http://KRAVUL.pythonanywhere.com/prices/${symbol}`);
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
